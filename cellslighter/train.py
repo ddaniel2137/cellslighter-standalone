@@ -24,7 +24,7 @@ def create_weighted_random_sampler(labels: List[int], num_samples_per_class: int
     class_counts = torch.bincount(torch.tensor(labels))
     class_weights = 1.0 / class_counts
     sample_weights = [class_weights[label] for label in labels]
-    num_samples = num_samples_per_class * num_classes
+    num_samples = min(len(labels), 5*num_samples_per_class * num_classes)
     return WeightedRandomSampler(sample_weights, num_samples=num_samples, replacement=False)
 
 
@@ -50,15 +50,15 @@ def main():
     crops = cell_crop_loader.prepare_cell_crops()
     dataset = CellDataset(crops, train_transform)
     labels = [crop.label for crop in crops]
-    num_classes = 14
+    num_classes = 15
 
     num_samples_per_class = min(torch.bincount(torch.tensor(labels), minlength=num_classes)).item()
     #ic(num_samples_per_class)
-    sampler = create_weighted_random_sampler(labels, num_samples_per_class, num_classes)
+    sampler = create_weighted_random_sampler(labels, num_samples_per_class, num_classes - 1)
     # Create a subset of the dataset using the sampler
     subset_indices = list(iter(sampler))
     subset_dataset = create_subset_dataset(dataset, subset_indices)
-    datamodule = CellDataModule(subset_dataset, batch_size=512, num_workers=0, pin_memory=True, persistent_workers=False)
+    datamodule = CellDataModule(subset_dataset, batch_size=64, num_workers=2, pin_memory=False, persistent_workers=False)
     del crops
     del dataset
 
